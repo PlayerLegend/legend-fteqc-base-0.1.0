@@ -1,0 +1,15 @@
+This is a Quake C base for the FTE QuakeWorld engine.
+
+The aim of this base is to create a codebase that's absolutely beautiful (by my standards).
+Furthermore, this codebase is going to come set up with functional entity networking.
+
+Currently, the scope that I can think of for this, prefferably small, base is:
+    1) A short list of weapons, which will demonstrate the internal weapons handling system.
+    2) Basic player actions, i.e. movement, animation, items, etc.
+
+The code is in an alpha state right now -- it's a ways from feature complete.
+
+What is here is:
+    Weapon switching (attacks are broken)
+    Some not-quite-quakeworld physics, with entity networking
+    I haven't tested the prediction on a high ping server, but it seems to work well enough over a lan connection.
