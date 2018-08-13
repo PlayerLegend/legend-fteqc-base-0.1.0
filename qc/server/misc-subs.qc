@@ -59,85 +59,84 @@ void SendEntity__send_header( float type, float changedflags )
 //    weapons
 //
 
-void add_weapon( weapon_object_t * weapon )
+weapon_cli_t * get_weapon_cli( entity holder, int slot )
 {
-  array__set_index( &g_weapon_objects_array, weapon->id, (void*)weapon );
+  return (weapon_cli_t*)array__get_index_data( &(holder.held_weapons), slot );
 }
 
-weapon_info_t * get_weapon_info( entity holder, int slot )
+bool is_weapon_ready( struct weapon_cli * cli )
 {
-  return (weapon_info_t*)array__get_index_data( &(holder.held_weapons), slot );
-}
-
-bool is_weapon_ready( entity holder )
-{
-  if( holder.current_weapon_info == __NULL__ )
+  if( cli == __NULL__ )
     {
       return FALSE;
     }
 
-  if( holder.weapon_frame_active )
+  if( cli->holder.weapon_frame_active )
+    {
+      return FALSE;
+    }
+
+  if( time < cli->time_when_ready )
     {
       return FALSE;
     }
   
-  if( time < holder.current_weapon_info->time_when_ready )
-    {
-      return FALSE;
-    }
-  else
-    {
-      return TRUE;
-    }
+  return TRUE;
 }
 
 bool holster_weapon( entity holder )
 {
-  if( holder.current_weapon_info == __NULL__ )
+  if( holder.current_weapon_cli == __NULL__ )
     {
       return TRUE;
     }
   
-  if( !is_weapon_ready( holder ) )
+  if( !is_weapon_ready( holder.current_weapon_cli ) )
     {
       return FALSE;
     }
   
-  weapon_object_t * wo = holder.current_weapon_info->weapon;
-  
-  if( wo->holster( holder ) )
+  if( holder.current_weapon_def->holster( holder.current_weapon_cli ) )
     {
-      holder.current_weapon_info = __NULL__;
+      holder.current_weapon_cli = __NULL__;
+      holder.current_weapon_def = __NULL__;
       return TRUE;
     }
-  else
-    {
-      return FALSE;
-    }
+  
+  return FALSE;
 }
 
-bool wield_weapon( entity holder, weapon_info_t * weapon_info )
+bool wield_weapon( weapon_cli_t * cli )
 {
-  if( weapon_info == __NULL__ )
+  if( cli == cli->holder.current_weapon_cli )
     {
-      return FALSE;
-    }
-
-  weapon_object_t * wo = weapon_info->weapon;
-  
-  if( wo->wield( holder ) )
-    {
-      holder.current_weapon_info = weapon_info;
       return TRUE;
     }
-  else
+  
+  if( !holster_weapon( cli->holder ) )
     {
       return FALSE;
     }
+
+  weapon_def_t * def = cli->weapon;
+  
+  if( def->wield( cli ) )
+    {
+      cli->holder.current_weapon_cli = cli;
+      cli->holder.current_weapon_def = def;
+      return TRUE;
+    }
+  
+  return FALSE;
 }
 
-bool set_weapon_info( entity holder, int slot, weapon_info_t weapon_info )
+bool give_weapon( entity holder, int slot, struct weapon_def * def )
 {
+  if( slot < 0 )
+    {
+      slot = def->target_slot;
+    }
+  
   if( slot == holder.current_weapon_slot )
     {
       if( !holster_weapon( holder ) )
@@ -146,19 +145,19 @@ bool set_weapon_info( entity holder, int slot, weapon_info_t weapon_info )
 	}
     }
 
-  weapon_info_t * weapon_info_p = get_weapon_info( holder, slot );
+  weapon_cli_t * set_weapon_cli = get_weapon_cli( holder, slot );
 
-  if( weapon_info_p == __NULL__ )
+  if( set_weapon_cli == __NULL__ )
     {
-      weapon_info_p = memalloc( sizeof( *weapon_info_p ) );
-      array__set_index( &holder.held_weapons, slot, (void*)weapon_info_p );
+      set_weapon_cli = memalloc( sizeof( *set_weapon_cli ) );
+      array__set_index( &holder.held_weapons, slot, (void*)set_weapon_cli );
     }
 
-  *weapon_info_p = weapon_info;
+  *set_weapon_cli = (struct weapon_cli){ holder, def, 0 };
 
   if( slot == holder.current_weapon_slot )
     {
-      wield_weapon( holder, weapon_info_p );
+      wield_weapon( set_weapon_cli );
     }
 
   return TRUE;
@@ -167,9 +166,9 @@ bool set_weapon_info( entity holder, int slot, weapon_info_t weapon_info )
 
 bool switch_weapon_slot( entity holder, int slot )
 {
-  weapon_info_t * desired_weapon_info = get_weapon_info( holder, slot );
+  weapon_cli_t * desired_weapon_cli = get_weapon_cli( holder, slot );
 
-  if( desired_weapon_info == holder.current_weapon_info )
+  if( desired_weapon_cli == holder.current_weapon_cli )
     {
       return TRUE;
     }
@@ -181,105 +180,77 @@ bool switch_weapon_slot( entity holder, int slot )
 
   holder.current_weapon_slot = slot;
   
-  return wield_weapon( holder, desired_weapon_info );
-}
-
-bool give_weapon_object( entity holder, weapon_object_t * weapon )
-{
-  return set_weapon_info( holder, weapon->target_slot, (weapon_info_t){ holder, weapon, 0 } );
-}
-
-bool give_weapon_id( entity holder, int weapon_id )
-{
-  weapon_object_t * desired_wo = (weapon_object_t*)array__get_index_data( &g_weapon_objects_array, weapon_id );
-
-  if( desired_wo == __NULL__ )
-    {
-      print( strcat( "Cannot give weapon, no weapon exists by id ", ftos( weapon_id ), "\n" ) );
-      return FALSE;
-    }
-
-  return give_weapon_object( holder, desired_wo );
-}
-
-void init_weapon( weapon_object_t * weapon )
-{
-  array__set_index( &g_weapon_objects_array, weapon->id, (void*)weapon );
+  return wield_weapon( desired_weapon_cli );
 }
 
 void run_weapon_frame( entity holder )
 {
-  if( !holder.weapon_frame_active )
+  if( time < holder.current_weapon_cli->time_when_ready )
     {
       return;
     }
 
-  weapon_object_t * wo = holder.current_weapon_info->weapon;
-
-  if( !(holder.held_buttons & BUTTONFL__ATTACK) || !wo->frame( holder ) )
+  if( !holder.weapon_frame_active )
     {
-      wo->end( holder );
-      holder.weapon_frame_active = FALSE;
+      return;
     }
+  
+  if( holder.held_buttons & BUTTONFL__ATTACK )
+    {
+      if( holder.current_weapon_def->frame( holder.current_weapon_cli ) )
+	{
+	  return;
+	}
+    }
+
+  holder.current_weapon_def->end( holder.current_weapon_cli );
+  holder.weapon_frame_active = FALSE;
 }
   
 bool weapon_attack( entity holder )
 {
-  if( !is_weapon_ready( holder ) )
+  if( !is_weapon_ready( holder.current_weapon_cli ) )
     {
       return FALSE;
     }
 
-  weapon_object_t * wo = holder.current_weapon_info->weapon;
-
-  if( wo->begin( holder ) )
+  if( holder.current_weapon_def->begin( holder.current_weapon_cli ) )
     {
-      if( holder.current_weapon_info->time_when_ready > time )
-	{
-	  holder.weapon_frame_active = TRUE;
-	}
-      else
-	{
-	  wo->end( holder );
-	}
-      
+      holder.weapon_frame_active = TRUE;
       return TRUE;
     }
-  else
-    {
-      return FALSE;
-    }
+
+  return FALSE;
 }
 
-bool weapon_impulse_switch( entity holder )
+void weapon_impulse_switch( entity holder )
 {
   if( holder.impulse != 0 )
     {
       holder.next_weapon_impulse = holder.impulse;
     }
 
-  if( holder.next_weapon_impulse == 0 ||
+  if( holder.next_weapon_impulse <= 0 ||
       holder.next_weapon_impulse > holder.held_weapons.count ) // 1 will be subtracted, so it will be within range
     {
-      return FALSE;
+      holder.next_weapon_impulse = 0;
+      return;
     }
 
   if( !switch_weapon_slot( holder, holder.next_weapon_impulse - 1 ) )
     {
-      return FALSE;
+      return;
     }
-  else
-    {
-      holder.next_weapon_impulse = 0;
-      return TRUE;
-    }
+  
+  holder.next_weapon_impulse = 0;
 }
 
 void client_weapon_frame()
 {
   run_weapon_frame( self );
   weapon_impulse_switch( self );
-  if( self.held_buttons & BUTTONFL__ATTACK )
+  if( self.pressed_buttons & BUTTONFL__ATTACK )
+    //    enforce semi-auto, to do automatic fire make def->frame = def->start
     {
       print("tryattack\n");
       weapon_attack( self );

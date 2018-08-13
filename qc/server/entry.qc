@@ -31,8 +31,6 @@ void main()
 
 void worldspawn()
 {
-  init_weapon( &weapon__axe );
-  init_weapon( &weapon__shotgun );
 }
 
 void StartFrame()

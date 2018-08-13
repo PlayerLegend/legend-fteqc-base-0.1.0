@@ -19,39 +19,38 @@ int AXE__TARGET_SLOT = 0;
 
 #warning todo: make these functions take a weapon_info as well, it isnt garunteed to be holder.current_weapon_info
 
-bool axe__wield( entity holder )
+bool axe__wield( struct weapon_cli * cli )
 {
   print( "Wielded axe\n" );
-  self.weaponmodel = AXE__VIEWMODEL;
+  cli->holder.weaponmodel = AXE__VIEWMODEL;
   return TRUE;
 }
 
-bool axe__begin( entity holder )
+bool axe__begin( struct weapon_cli * cli )
 {
   print("attac\n");
   return TRUE;
 }
 
-bool axe__frame( entity holder )
+bool axe__frame( struct weapon_cli * cli )
 {
   print("fram\n");
   return TRUE;
 }
 
-void axe__end( entity holder )
+void axe__end( struct weapon_cli * cli )
 {
   print("end\n");
   return;
 }
 
-bool axe__holster( entity holder )
+bool axe__holster( struct weapon_cli * cli )
 {
   return TRUE;
 }
 
-weapon_object_t weapon__axe =
+struct weapon_def weapon__axe =
   {
-    WEAPONID__AXE,
     AXE__NAME,
     AXE__VIEWMODEL,
     AXE__MAX_AMMO,

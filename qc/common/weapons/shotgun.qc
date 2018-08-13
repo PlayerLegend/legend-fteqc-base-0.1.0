@@ -17,36 +17,39 @@ string SHOTGUN__VIEWMODEL = "progs/v_shot.mdl";
 int SHOTGUN__MAX_AMMO = 25;
 int SHOTGUN__TARGET_SLOT = 1;
 
-bool shotgun__wield( entity holder )
+bool shotgun__wield( struct weapon_cli * cli )
 {
   print( "Wielded shotgun\n" );
-  self.weaponmodel = SHOTGUN__VIEWMODEL;
+  cli->holder.weaponmodel = SHOTGUN__VIEWMODEL;
   return TRUE;
 }
 
-bool shotgun__begin( entity holder )
+bool shotgun__begin( struct weapon_cli * cli )
 {
+  print("SHOT\n");
+  cli->time_when_ready = time + 2;
   return TRUE;
 }
 
-bool shotgun__frame( entity holder )
+bool shotgun__frame( struct weapon_cli * cli )
 {
-  return TRUE;
+  print("SHOTFRAME\n");
+  return FALSE;
 }
 
-void shotgun__end( entity holder )
+void shotgun__end( struct weapon_cli * cli )
 {
+  print("SHOTEND\n");
   return;
 }
 
-bool shotgun__holster( entity holder )
+bool shotgun__holster( struct weapon_cli * cli )
 {
   return TRUE;
 }
 
-weapon_object_t weapon__shotgun =
+struct weapon_def weapon__shotgun =
   {
-    WEAPONID__SHOTGUN,
     SHOTGUN__NAME,
     SHOTGUN__VIEWMODEL,
     SHOTGUN__MAX_AMMO,

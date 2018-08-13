@@ -36,50 +36,38 @@ struct {
 //    weapons
 //
 
-struct weapon_object{
-  int id;
+struct weapon_cli{
+  entity holder;
+  struct weapon_def * weapon;
+  int time_when_ready;
+};
+
+typedef struct weapon_cli weapon_cli_t;
+
+struct weapon_def{
   string name;
   string model;
   int max_ammo;
 
   int target_slot;
 
-  bool( entity holder ) wield;
-  bool( entity holder ) begin;
-  bool( entity holder ) frame;
-  void( entity holder ) end;
-  bool( entity holder ) holster;
+  bool( struct weapon_cli * cli ) wield;
+  bool( struct weapon_cli * cli ) begin;
+  bool( struct weapon_cli * cli ) frame;
+  void( struct weapon_cli * cli ) end;
+  bool( struct weapon_cli * cli ) holster;
 };
 
 .bool weapon_frame_active;
 .float next_weapon_impulse;
 
-typedef struct weapon_object weapon_object_t;
+typedef struct weapon_def weapon_def_t;
 
-#define NULL_weapon_object_t (weapon_object_t){ 0, "NULL_WEAPON", 0, 0, 0, __NULL__, __NULL__, __NULL__, __NULL__, __NULL__ }
+.weapon_cli_t * current_weapon_cli;
+.weapon_def_t * current_weapon_def;
 
-struct weapon_info{
-  entity owner;
-  weapon_object_t * weapon;
-  int time_when_ready;
-};
-
-typedef struct weapon_info weapon_info_t;
-
-.weapon_info_t * current_weapon_info;
-
-#define NULL_weapon_info_t (weapon_info_t){ world, __NULL__, 0, 0 }
-
-void_array_t g_weapon_objects_array;
 .void_array_t held_weapons;
 .int current_weapon_slot;
-
-enum
-  {
-    WEAPONID__AXE,
-    WEAPONID__SHOTGUN,
-    MAX_WEAPONID,
-  };
 
 .string weaponmodel; // doesn't do anything in CSQC, but it's here so the common_qc code compiles
 

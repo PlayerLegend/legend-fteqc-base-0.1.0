@@ -37,6 +37,14 @@ vector get_velocity_weapon_sway()
   static vector velocity_weapon_sway;
   
   vector swayvel = bound_vector_max( self.velocity / 50, weapon_sway_max );
+
+  float sway_fwd = v_forward * swayvel;
+
+  //if( sway_fwd < 0 )
+    {
+      swayvel -= 0.5 * sway_fwd * v_forward;
+    }
+  
   vector ofs_add = weapon_sway_max * frametime * (swayvel - velocity_weapon_sway);
   
   velocity_weapon_sway += ofs_add;

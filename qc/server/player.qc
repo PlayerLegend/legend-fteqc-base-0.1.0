@@ -28,8 +28,8 @@
 void setup_player( entity tgt )
 //    set up an entity as a player
 {
-  give_weapon_id( tgt, WEAPONID__AXE );
-  give_weapon_id( tgt, WEAPONID__SHOTGUN );
+  give_weapon( tgt, -1, &weapon__axe );
+  give_weapon( tgt, -1, &weapon__shotgun );
   tgt.classname = "player";
   tgt.solid = SOLID_SLIDEBOX;
   tgt.modelindex = MODEL__PLAYER;
