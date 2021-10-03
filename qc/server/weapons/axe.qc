@@ -17,47 +17,55 @@ string AXE__VIEWMODEL = "progs/v_axe.mdl";
 int AXE__MAX_AMMO = 0;
 int AXE__TARGET_SLOT = 0;
 
-#warning todo: make these functions take a weapon_info as well, it isnt garunteed to be holder.current_weapon_info
-
-bool axe__wield( struct weapon_cli * cli )
+bool axe__wield( weapon_cli_t * cli )
 {
   print( "Wielded axe\n" );
+  precache_model( AXE__VIEWMODEL );
   cli->holder.weaponmodel = AXE__VIEWMODEL;
   return TRUE;
 }
 
-bool axe__begin( struct weapon_cli * cli )
+bool axe__attack( weapon_cli_t * cli )
 {
-  print("attac\n");
+  makevectors( cli->holder.v_angle );
+
+  damage_info_t damage =
+    {
+      world,
+      10,
+      cli->holder,
+      cli->holder,
+      FL_Null,
+      0,
+      FALSE
+    };
+
+  hitscan_attack( cli->holder.origin, v_forward, 1000, &damage );
+  
+  cli->time_when_ready = time + 0.5;
+  print(ftos(time));
+  print(" attack\n");
   return TRUE;
 }
 
-bool axe__frame( struct weapon_cli * cli )
+void axe__end( weapon_cli_t * cli )
 {
-  print("fram\n");
-  return TRUE;
 }
 
-void axe__end( struct weapon_cli * cli )
-{
-  print("end\n");
-  return;
-}
-
-bool axe__holster( struct weapon_cli * cli )
+bool axe__holster( weapon_cli_t * cli )
 {
   return TRUE;
 }
 
-struct weapon_def weapon__axe =
+weapon_def_t weapon__axe =
   {
     AXE__NAME,
     AXE__VIEWMODEL,
     AXE__MAX_AMMO,
     AXE__TARGET_SLOT,
     axe__wield,
-    axe__begin,
-    axe__frame,
+    axe__attack,
+    axe__attack,
     axe__end,
     axe__holster
   };

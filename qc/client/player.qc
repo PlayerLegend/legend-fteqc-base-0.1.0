@@ -33,6 +33,7 @@ float predraw__player()
 {
   if( self.entnum == player_localentnum )
     {
+      //cprint(strcat( "entnum ", ftos(player_localentnum)));
       const int first_commandframe = servercommandframe + 1;
       if( next_commandframe < first_commandframe )
 	{
@@ -52,8 +53,9 @@ float predraw__player()
     }
   else
     {
-      input_timelength = frametime;
-      run_player_physics( self );
+#warning todo: add networked input for non-client players. Maybe keep track of input deltas
+      //input_timelength = frametime;
+      //run_player_physics( self );
       addentity( self );
     }
   

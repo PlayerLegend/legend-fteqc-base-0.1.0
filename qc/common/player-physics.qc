@@ -20,13 +20,40 @@ bool playermove__do_step( entity tgt, float stepheight, vector gdir )
   //    check if tgt hit a wall
   tracebox( tgt.origin, tgt.mins, tgt.maxs, tgt.origin + step_dir, FALSE, tgt );
 
-  if( trace_fraction >= 1.0 )
+  if( trace_fraction >= 1.0 || trace_plane_normal * gdir < 0 )
     {
       return FALSE;
     }
   
+  tracebox( tgt.origin, tgt.mins, tgt.maxs, tgt.origin - gdir * stepheight, FALSE, tgt );
+
+  float traced_height = trace_fraction * stepheight;
+
+  tracebox( trace_endpos, tgt.mins, tgt.maxs, trace_endpos + step_dir, FALSE, tgt );
+
+  tracebox( trace_endpos, tgt.mins, tgt.maxs, trace_endpos + gdir * traced_height, FALSE, tgt );
+
+  if( trace_endpos == tgt.origin )
+    {
+      return FALSE;
+    }
+
+  print("diff ");
+  print(vtos( trace_endpos - tgt.origin ));
+  print("\n");
+
+  setorigin( tgt, trace_endpos );
+  
+  tgt.origin = trace_endpos;
+
+  return TRUE;
+
+  /*
+  // old
+  
   vector step_org = tgt.origin - gdir * stepheight;
 
+  
   //    check if tgt can go up
   tracebox( tgt.origin, tgt.mins, tgt.maxs, step_org, FALSE, tgt );
 
@@ -54,7 +81,7 @@ bool playermove__do_step( entity tgt, float stepheight, vector gdir )
       tgt.velocity = step_vel;
     }
 
-  return TRUE;
+    return TRUE;*/
 }
 
 bool playermove__jump( entity tgt, state_phys_vars_t * phys_state, vector gdir )
@@ -62,8 +89,6 @@ bool playermove__jump( entity tgt, state_phys_vars_t * phys_state, vector gdir )
   if( input_buttons & BUTTONFL__JUMP )
     //    jump
     {
-      print(ftos(time));
-      print(" Vel\n");
       float upspeed = -gdir * tgt.velocity;
       if( upspeed < 0 )
 	{
@@ -125,8 +150,8 @@ void playermove__ground_accelerate( entity tgt, state_phys_vars_t * phys_state, 
       float down_size = tgt.mins * gdir;
       
       traceline( lead_pos, lead_pos - (down_size + 1) * gdir, FALSE, tgt );
-      
-      float vel_antiscale = frametime * phys_state->friction;
+
+      float vel_antiscale = move_time * phys_state->friction * 0.4;// * cvar("fric_scale");
       if( trace_fraction >= 1.0 )
 	//    not on an edge
 	{
@@ -145,7 +170,7 @@ void playermove__ground_accelerate( entity tgt, state_phys_vars_t * phys_state, 
       float vel_scale = horiz_speed > vel_antiscale ?
 	(horiz_speed - vel_antiscale) / horiz_speed : 0;
       
-      tgt.velocity = vert_vel + horiz_vel * vel_scale;
+	tgt.velocity = vert_vel + horiz_vel * vel_scale;
     }
   else
     {
@@ -182,7 +207,7 @@ bool playermove__checkbottom( entity tgt, vector gdir )
 
 void playermove__slide( entity tgt, phys_vars_t * phys_v, float move_time, float wishspeed, vector wishdir, vector gdir )
 {
-  float iter_max = 10;
+  const float iter_max = 10;
   float iter = 0;
   float time_diff;
   vector hit_normal;
@@ -200,12 +225,14 @@ void playermove__slide( entity tgt, phys_vars_t * phys_v, float move_time, float
 	  playermove__ground_accelerate( tgt, &phys_v->ground, move_time, wishspeed, wishdir, gdir );
 	  stepheight = phys_v->ground.stepheight;
 	}
+      tgt.flags |= FL_ONGROUND;
     }
   else
     //    in air
     //    *** todo: in water
     {
       playermove__air_accelerate( tgt, &phys_v->air, move_time, wishspeed, wishdir, gdir );
+      tgt.flags &= ~FL_ONGROUND;
     }
       
   while( move_time > 0 )
@@ -239,10 +266,12 @@ void playermove__slide( entity tgt, phys_vars_t * phys_v, float move_time, float
       
       //    count iterations
       iter += 1;
-      if( iter > iter_max )
+      if( iter > iter_max )\
 	{
 	  print("Warning: Iteration break in physics ");
 	  print(ftos(move_time));
+	  print("\n");
+	  print(vtos(tgt.velocity));
 	  print("\n");
 	  break;
 	}
@@ -250,74 +279,6 @@ void playermove__slide( entity tgt, phys_vars_t * phys_v, float move_time, float
 
   setorigin( tgt, tgt.origin );
 }
-/*
-  void playermove__slide( entity tgt, phys_vars_t * phys_v, float move_time, float wishspeed, vector wishdir, vector gdir )
-  {
-  float iter_max = 10;
-  float iter = 0;
-  float time_diff;
-  vector hit_normal;
-  float stepheight;
-  vector next_org;
-  float move_frac;
-  //setorigin( tgt, tgt.origin + tgt.velocity * move_time );
-  //return;
-  
-  while( move_time > 0 )
-    {
-      //    check what will be hit
-      tracebox( tgt.origin, tgt.mins, tgt.maxs, tgt.origin + tgt.velocity*move_time, FALSE, tgt );
-      next_org = trace_endpos;
-      move_frac = trace_fraction;
-      hit_normal = trace_plane_normal;
-      
-      //    determine the time until the hit
-      time_diff = move_time * trace_fraction;
-
-      //    accelerate up until the hit
-      if( playermove__checkbottom( tgt, gdir ) )
-	//    on ground
-	{
-	  playermove__ground_accelerate( tgt, &phys_v->ground, time_diff, wishspeed, wishdir, gdir );
-	  stepheight = phys_v->ground.stepheight;
-	}
-      else
-	//    in air
-	//    *** todo: in water
-	{
-	  playermove__air_accelerate( tgt, &phys_v->air, time_diff, wishspeed, wishdir, gdir );
-	  //playermove__ground_accelerate( tgt, &phys_v->air, time_diff, wishspeed, wishdir, gdir );
-	  stepheight = phys_v->air.stepheight;
-	}
-      
-      //    move to the hit
-      tgt.origin = next_org;
-      move_time = move_time - time_diff;
-
-      //    apply the hit to the target's velocity
-      if( move_frac < 1.0 && !playermove__do_step( tgt, stepheight, gdir ) )
-	{
-	  tgt.velocity = tgt.velocity - hit_normal * (tgt.velocity * hit_normal);
-	}
-
-      if( tgt.velocity == '0 0 0' )
-	{
-	  break;
-	}
-      
-      //    count iterations
-      iter += 1;
-      if( iter > iter_max )
-	{
-	  print("Warning: Iteration break in physics ");
-	  print(ftos(move_time));
-	  print("\n");
-	  break;
-	}
-    }
-
-  setorigin( tgt, tgt.origin );
-  }*/
 
 void playermove( entity tgt, float move_time, phys_vars_t * phys_v )
 {

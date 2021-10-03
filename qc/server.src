@@ -12,51 +12,30 @@
   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-string SHOTGUN__NAME = "Shotgun";
-string SHOTGUN__VIEWMODEL = "progs/v_shot.mdl";
-int SHOTGUN__MAX_AMMO = 25;
-int SHOTGUN__TARGET_SLOT = 1;
+../progs.dat
 
-bool shotgun__wield( struct weapon_cli * cli )
-{
-  print( "Wielded shotgun\n" );
-  cli->holder.weaponmodel = SHOTGUN__VIEWMODEL;
-  return TRUE;
-}
+#pragma target fte
 
-bool shotgun__begin( struct weapon_cli * cli )
-{
-  print("SHOT\n");
-  cli->time_when_ready = time + 2;
-  return TRUE;
-}
+server/ssdefs.qc  // engine generated defs file
+common/array.qc          // extendable array types and management functions
+common/custom-globals.qc // global variables and definitions
+server/custom-globals.qc   // global variables and definitions
+common/misc-subs.qc      // general purpose subroutines
+common/player-physics.qc // player physics
+common/brush_entities.qc // brush entities, such as platforms and triggers
 
-bool shotgun__frame( struct weapon_cli * cli )
-{
-  print("SHOTFRAME\n");
-  return FALSE;
-}
+server/misc-subs.qc                   // general purpose subroutines
 
-void shotgun__end( struct weapon_cli * cli )
-{
-  print("SHOTEND\n");
-  return;
-}
+//    weapons
 
-bool shotgun__holster( struct weapon_cli * cli )
-{
-  return TRUE;
-}
+server/weapons/axe.qc
+server/weapons/shotgun.qc
+server/weapons/spawner.qc
 
-struct weapon_def weapon__shotgun =
-  {
-    SHOTGUN__NAME,
-    SHOTGUN__VIEWMODEL,
-    SHOTGUN__MAX_AMMO,
-    SHOTGUN__TARGET_SLOT,
-    shotgun__wield,
-    shotgun__begin,
-    shotgun__frame,
-    shotgun__end,
-    shotgun__holster
-  };
+//
+
+server/walker-ai.qc
+server/ai-soldier.qc
+server/player.qc                      // player/client functions
+server/entry.qc                       // functions called by the engine
+server/map-spawns.qc                  // functions called when map entities spawn

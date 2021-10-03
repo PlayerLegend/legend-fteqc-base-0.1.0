@@ -106,8 +106,8 @@ void * array__get_index_data( void_array_t * array, int index )
     }
   else
     {
-      print(ftos(array->count));
-      print(" - Out of range\n");
+      //print(ftos(array->count));
+      //print(" - Out of range\n");
       return __NULL__;
     }
 }

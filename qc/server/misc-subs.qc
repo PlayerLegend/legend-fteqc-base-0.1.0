@@ -22,6 +22,52 @@
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 //
+//    Debug
+//
+
+void print_vec( string title, vector v )
+{
+  string p = strcat( title, ": ", vtos( v ), "\n" );
+
+  if( self != world )
+    {
+      sprint( self, 9000, p );
+    }
+  else
+    {
+      print( p );
+    }
+}
+
+void print_float( entity e, string title, float f )
+{
+  string p = strcat( title, ": ", ftos( f ), "\n" );
+  
+  if( e != world )
+    {
+      sprint( e, 9000, p );
+    }
+  else
+    {
+      print( p );
+    }
+}
+
+void print_message( string message )
+{
+  string p = strcat( message, "\n" );
+  
+  if( self != world )
+    {
+      sprint( self, 9000, p );
+    }
+  else
+    {
+      print( p );
+    }
+}
+
+//
 //    safety functions
 //
 
@@ -64,14 +110,14 @@ weapon_cli_t * get_weapon_cli( entity holder, int slot )
   return (weapon_cli_t*)array__get_index_data( &(holder.held_weapons), slot );
 }
 
-bool is_weapon_ready( struct weapon_cli * cli )
+bool is_weapon_ready( weapon_cli_t * cli )
 {
   if( cli == __NULL__ )
     {
       return FALSE;
     }
 
-  if( cli->holder.weapon_frame_active )
+  if( cli->holder.weapon_frame_active || cli->holder.weapon_frame_held )
     {
       return FALSE;
     }
@@ -130,7 +176,7 @@ bool wield_weapon( weapon_cli_t * cli )
   return FALSE;
 }
 
-bool give_weapon( entity holder, int slot, struct weapon_def * def )
+bool give_weapon( entity holder, int slot, weapon_def_t * def )
 {
   if( slot < 0 )
     {
@@ -153,7 +199,7 @@ bool give_weapon( entity holder, int slot, struct weapon_def * def )
       array__set_index( &holder.held_weapons, slot, (void*)set_weapon_cli );
     }
 
-  *set_weapon_cli = (struct weapon_cli){ holder, def, 0 };
+  *set_weapon_cli = (weapon_cli_t){ holder, def, 0 };
 
   if( slot == holder.current_weapon_slot )
     {
@@ -185,26 +231,25 @@ bool switch_weapon_slot( entity holder, int slot )
 
 void run_weapon_frame( entity holder )
 {
-  if( time < holder.current_weapon_cli->time_when_ready )
+  if( holder.current_weapon_def != __NULL__ &&
+      (holder.weapon_frame_active || holder.weapon_frame_held) &&
+      time > holder.current_weapon_cli->time_when_ready )
     {
-      return;
-    }
-
-  if( !holder.weapon_frame_active )
-    {
-      return;
-    }
-  
-  if( holder.held_buttons & BUTTONFL__ATTACK )
-    {
-      if( holder.current_weapon_def->frame( holder.current_weapon_cli ) )
+      if( holder.held_buttons & BUTTONFL__ATTACK || holder.weapon_frame_held )
 	{
-	  return;
+	  //print("FRAME\n");
+	  if( holder.current_weapon_def->frame( holder.current_weapon_cli ) )
+	    {
+	      return;
+	    }
+	  //print("frame fail\n");
 	}
+      //print("end\n");
+      
+      holder.current_weapon_def->end( holder.current_weapon_cli );
+      holder.weapon_frame_active = FALSE;
+      holder.weapon_frame_held = FALSE;
     }
-
-  holder.current_weapon_def->end( holder.current_weapon_cli );
-  holder.weapon_frame_active = FALSE;
 }
   
 bool weapon_attack( entity holder )
@@ -252,7 +297,7 @@ void client_weapon_frame()
   if( self.pressed_buttons & BUTTONFL__ATTACK )
     //    enforce semi-auto, to do automatic fire make def->frame = def->start
     {
-      print("tryattack\n");
+      print_message( "try attack\n" );
       weapon_attack( self );
     }
 }
@@ -283,4 +328,212 @@ void client_setup_buttons_flags()
   self.pressed_buttons = new_buttons & ~self.held_buttons;
   self.released_buttons = self.held_buttons & ~new_buttons;
   self.held_buttons = new_buttons;
+}
+
+//
+//    Damage
+//
+
+float do_damage_sub( damage_info_t * damage )
+{
+  //  print_float( "DAMAGE DONE", damage->ammount );
+  
+  if( !damage->target.takedamage )
+    {
+      return 0;
+    }
+
+  if( damage->amount <= 0 )
+    {
+      return 0;
+    }
+
+  float take = damage->amount;
+
+  damage->target.health -= take;
+
+  if( damage->target.health <= 0 )
+    {
+      //print_float("die health", damage->target.health );
+      if( damage->target.die )
+	{
+	  damage->target.die( damage );
+	}
+    }
+  else if( damage->target.pain )
+    {
+      //print_float("pain health", damage->target.health );
+      damage->target.pain( damage );
+    }
+  //print_float("pain2 health", damage->target.health );
+
+  return take;
+}
+
+void clear_collect_damage()
+{
+  g_collect_damage_array.count = 0;
+}
+
+void apply_collect_damage()
+{
+  for( int i = 0; i < g_collect_damage_array.count; i++ )
+    {
+      /*print("d\nd\nd\nd\nd\n");
+      print_float( "dcount",  g_collect_damage_array.count);
+      print("b\nb\nb\nb\nb\n");*/
+      do_damage_sub( g_collect_damage_array.data + i );
+    }
+
+  clear_collect_damage();
+}
+
+
+int get_new_collect_damage()
+{
+  const int alloc_expand_increment = 5;
+
+  int old_count = g_collect_damage_array.count;
+  
+  g_collect_damage_array.count += 1;
+  
+  if( g_collect_damage_array.count > g_collect_damage_array.alloc )
+    //    reallocate
+    {
+      g_collect_damage_array.alloc = g_collect_damage_array.count + 5;
+
+      damage_info_t * new_array = memalloc( g_collect_damage_array.alloc * sizeof( *new_array ) );
+
+      memcpy( new_array, g_collect_damage_array.data, old_count * sizeof( *new_array ) );
+
+      memfree( g_collect_damage_array.data );
+      
+      g_collect_damage_array.data = new_array;
+    }
+
+  g_collect_damage_array.data[old_count] = (damage_info_t){};
+
+  return old_count;
+}
+
+bool is_damage_similar( damage_info_t * a, damage_info_t * b )
+{
+  return a->target == b->target &&
+    a->attacker == b->attacker &&
+    a->src == b->src &&
+    a->flags == b->flags;
+}
+
+void add_collect_damage( damage_info_t * damage )
+{
+  static int check_index;
+
+  if( check_index >= g_collect_damage_array.count )
+    {
+      check_index = g_collect_damage_array.count - 1;
+    }
+  
+  if( check_index < 0 )
+    {
+      check_index = get_new_collect_damage();
+      g_collect_damage_array.data[check_index] = *damage;
+      //print_float( "init damage", damage.amount );
+      return;
+    }
+
+  if( is_damage_similar( damage, g_collect_damage_array.data + check_index ) )
+    {
+      g_collect_damage_array.data[check_index].amount += damage->amount;
+      //print_float( "reuse damage", g_collect_damage_array.data[check_index].amount );
+      return;
+    }
+  else
+    {
+      //print("precheck\n");
+      for( check_index = g_collect_damage_array.count - 1; check_index >= 0; check_index-- )
+	{
+	  //  print("check\n");
+	  if( is_damage_similar( damage, g_collect_damage_array.data + check_index ) )
+	    {
+	      g_collect_damage_array.data[check_index].amount += damage->amount;
+	      //  print_float( "found damage", g_collect_damage_array.data[check_index].amount );
+	      return;
+	    }
+	}
+    }
+
+  //print_float( "new damage", damage.amount );
+  check_index = get_new_collect_damage();
+  g_collect_damage_array.data[check_index].amount += damage->amount;
+}
+
+float do_damage( damage_info_t * damage )
+{
+  if( damage->collect )
+    {
+      //print_message("Collect");
+      add_collect_damage( damage );
+      return 0;
+    }
+  else
+    {
+      //print_message("Do");
+      apply_collect_damage();
+      return do_damage_sub( damage );
+    }
+}
+
+void spawn_cursor( vector org )
+{
+  static entity cursor;
+  if( cursor == world )
+    {
+      cursor = spawn();
+      setmodel( cursor, "progs/player.mdl" );
+    }
+
+  setorigin( cursor, org );
+}
+
+void spawn_blood( entity ent, vector org, damage_info_t * damage )
+{
+  te_blood( org, '0 0 0', damage->amount );
+}
+
+void hitscan_attack( vector org, vector dir, float range, damage_info_t * damage )
+{
+  traceline( org, org + range * dir, FALSE, damage->inflictor );
+
+  if( trace_fraction >= 1.0 )
+    {
+      return;
+    }
+
+  if( !trace_ent.takedamage )
+    {
+      te_spike( trace_endpos );
+      return;
+    }
+
+  spawn_blood( trace_ent, trace_endpos, damage );
+  
+  //spawn_cursor( trace_endpos );
+
+  //print_message("trace something");
+  
+  damage->target = trace_ent;
+
+  do_damage( damage );
+}
+
+void hitscan_blast_square( vector org, vector angles, float range, vector spread, int count, damage_info_t * damage )
+{
+  makevectors( angles );
+  
+  for( int i = 0; i < count; i++ )
+    {
+      vector dir = v_forward + spread_x * crandom() * v_right + spread_y * crandom() * v_up;
+
+      hitscan_attack( org, dir, range, damage );
+    }
 }

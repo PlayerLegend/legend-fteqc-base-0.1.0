@@ -42,6 +42,8 @@ enum
     FL_8 = 128,
   };
 
+typedef int flags;
+
 //
 //    general time constants
 //
@@ -116,7 +118,7 @@ phys_vars_t default_phys_vars =
       2,   // edge friction
       10,  // accelerate
       100, // stopspeed
-      320, // maxspeed
+      260, // maxspeed
       270  // jumpspeed
     },
     { // water
@@ -182,3 +184,52 @@ enum
     BUTTONFL__ATTACK = FL_1,
     BUTTONFL__JUMP = FL_2,
   };
+
+//
+//    Damage
+//
+
+typedef int damagefl_t;
+
+enum
+  {
+    DAMAGEFL__NORMAL = FL_1,
+  };
+
+enum
+  {
+    DAMAGESRC__UNKNOWN,
+    DAMAGESRC__AXE,
+    DAMAGESRC__SHOTGUN,
+  };
+
+struct damage_info_t
+{
+  entity target;
+  float amount;
+  entity inflictor;
+  entity attacker;
+  damagefl_t flags;
+  float src;
+  bool collect;
+};
+
+float	DEAD_NO				= 0;
+float	DEAD_DYING			= 1;
+float	DEAD_DEAD			= 2;
+float	DEAD_RESPAWNABLE		= 3;
+
+
+//
+//    Misc
+//
+
+.float time_when_ready;
+
+
+//
+//    Math
+//
+
+const float DEG2RAD = M_PI / 180;
+const float RAD2DEG = 1 / DEG2RAD;

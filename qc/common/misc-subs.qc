@@ -22,7 +22,7 @@ float getmodelindex_check( string name )
 
   if( ret == -1 )
     {
-      print(strcat("Failed to load ", name, "\n"));
+      print( strcat("Failed to load ", name, "\n") );
     }
 
   return ret;
@@ -123,14 +123,32 @@ void activate_trigger( entity trigger, entity activator )
 //    Math
 //
 
-float vlen_is_greater( vector v, float len )
+float crandom()
 {
-  return v*v > len*len;
+  return random() - 0.5;
+}
+
+bool vlen_is_greater( vector v, float len )
+{
+  return vlen( v ) > len;
+  
+  /*if( len <= 0 )
+    {
+      return v == '0 0 0';
+    }
+  
+    return v*v > len*len;*/
 }
 
 float vlen_is_less( vector v, float len )
 {
-  return v*v < len*len;
+  return vlen( v ) < len;
+  /*  if( len <= 0 )
+    {
+      return v == '0 0 0';
+    }
+  
+    return v*v < len*len;*/
 }
 
 vector bound_vector_max( vector v, float rad )
@@ -159,4 +177,71 @@ float bound_float( float f, float min, float max )
     {
       return f;
     }
+}
+
+float anglediff( float a, float b )
+{
+  float ab = anglemod( a - b );
+
+  if( ab < 0 )
+    {
+      print("GAY\n");
+    }
+  
+  if( ab > 180 )
+    {
+      return ab - 360;
+    }
+  else
+    {
+      return ab;
+    }
+  
+  /*float ab = a - b;
+  float ba = b - a;
+  if( fabs( ab ) < fabs( ba ) )
+    {
+      
+      return ab;
+    }
+  else
+    {
+      return ba;
+      }*/
+
+  /*float diff = a - b;
+
+  while( diff < -180 )
+    {
+      diff += 360;
+    }
+
+  while( diff > 180 )
+    {
+      diff -= 360;
+    }
+
+    return diff;*/
+}
+
+vector anglediff3( vector a, vector b )
+{
+  return [ anglediff( a_x, b_x ), anglediff( a_y, b_y ), anglediff( a_z, b_z ) ];
+}
+
+vector vector_pow3( vector a )
+{
+  return [ a_x * a_x * a_x, a_y * a_y * a_y, a_z * a_z * a_z ];
+}
+
+vector rotate_about_axis( vector v, vector axis, float radians )
+{
+  axis = normalize( axis );
+  
+  vector axis_project = (v * axis) * axis;
+  vector axis_reject = v - axis_project;
+  vector cross = crossproduct( axis_reject, axis );
+  vector mod_reject = axis_reject * cos( radians ) + cross * sin( radians );
+
+  return axis_project + mod_reject;
 }

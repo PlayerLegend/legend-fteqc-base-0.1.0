@@ -17,7 +17,7 @@
 #define CSQC
 #pragma target fte
 
-common/fteextensions.qc  // engine generated defs file
+client/csdefs.qc  // engine generated defs file
 common/array.qc          // extendable array types and management functions
 common/custom-globals.qc // global variables and definitions
 client/custom-globals.qc   // global variables and definitions

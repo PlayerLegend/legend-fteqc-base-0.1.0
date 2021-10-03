@@ -12,90 +12,70 @@
   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-/*
-    custom-globals.qc<server_qc>
+string SHOTGUN__NAME = "Shotgun";
+//string SHOTGUN__VIEWMODEL = "progs/v_shot.mdl";
+string SHOTGUN__VIEWMODEL = "models/mg42.mdl";
+int SHOTGUN__MAX_AMMO = 25;
+int SHOTGUN__TARGET_SLOT = 1;
 
-    Definitions used by this codebase, like fteextensions.qc
-*/
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-
-//
-//    global arrays
-//
-
-struct {
-  entity_array_t single;
-  entity_array_t coop;
-  entity_array_t deathmatch;
-  entity_array_t all;
-} g_spawns;
-
-//
-//    weapons
-//
-
-struct weapon_cli_t
+bool shotgun__wield( weapon_cli_t * cli )
 {
-  entity holder;
-  struct weapon_def_t * weapon;
-  float time_when_ready;
-};
-
-struct weapon_def_t
-{
-  string name;
-  string model;
-  int max_ammo;
-
-  int target_slot;
-
-  bool( weapon_cli_t * cli ) wield;
-  bool( weapon_cli_t * cli ) begin;
-  bool( weapon_cli_t * cli ) frame;
-  void( weapon_cli_t * cli ) end;
-  bool( weapon_cli_t * cli ) holster;
-};
-
-.bool weapon_frame_held;
-.bool weapon_frame_active;
-.float next_weapon_impulse;
-
-.weapon_cli_t * current_weapon_cli;
-.weapon_def_t * current_weapon_def;
-
-.void_array_t held_weapons;
-.int current_weapon_slot;
-
-.string weaponmodel; // doesn't do anything in CSQC, but it's here so the common_qc code compiles
-
-//
-//    Buttons
-//
-
-.float held_buttons;
-.float released_buttons;
-.float pressed_buttons;
-
-//
-//    Damage
-//
-
-.void( damage_info_t * killing_damage ) die;
-.void( damage_info_t * pain_damage ) pain;
-
-struct
-{
-  int count;
-  int alloc;
-  damage_info_t * data;
+  print( "Wielded shotgun\n" );
+  cli->holder.weaponmodel = SHOTGUN__VIEWMODEL;
+  return TRUE;
 }
-  g_collect_damage_array;
 
-//
-//    Gamemode
-//
+bool shotgun__begin( weapon_cli_t * cli )
+{
+  //print("SHOT\n");
+  damage_info_t damage =
+    {
+      world,
+      8,
+      cli->holder,
+      cli->holder,
+      FL_Null,
+      0,
+      TRUE
+    };
+  
+  hitscan_blast_square( cli->holder.origin, cli->holder.v_angle, 8192, '0.08 0.08 0', 1, &damage );
+  
+  cli->time_when_ready = time + (60.0 / 1200.0);
+  
+  sound (cli->holder, CHAN_WEAPON, "sounds/guns/mg-shot2.wav", 1, ATTN_NORM);
+  
+  return TRUE;
+}
 
-float deathmatch;
-float coop;
+bool shotgun__frame( weapon_cli_t * cli )
+{
+  //print("SHOTFRAME\n");
+  //return FALSE;
+
+  return shotgun__begin( cli );
+}
+
+void shotgun__end( weapon_cli_t * cli )
+{
+  //print("SHOTEND\n");
+  return;
+}
+
+bool shotgun__holster( weapon_cli_t * cli )
+{
+  return TRUE;
+}
+
+weapon_def_t weapon__shotgun =
+  {
+    SHOTGUN__NAME,
+    SHOTGUN__VIEWMODEL,
+    SHOTGUN__MAX_AMMO,
+    SHOTGUN__TARGET_SLOT,
+    shotgun__wield,
+    shotgun__begin,
+    shotgun__frame,
+    shotgun__end,
+    shotgun__holster
+  };

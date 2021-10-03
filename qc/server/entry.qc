@@ -31,11 +31,12 @@ void main()
 
 void worldspawn()
 {
+  set_model_indexes();
 }
 
 void StartFrame()
 {
-  
+  apply_collect_damage();  
 }
 
 //
@@ -53,8 +54,6 @@ void ClientConnect()
 
 void PutClientInServer()
 {
-  set_model_indexes();
-
   self.think = th_player_spawn;
   self.nextthink = time + 0.1*( 1 + random() );
   self.SendEntity = sendentity__player;
@@ -65,8 +64,14 @@ float debug_last_update;
 
 void PlayerPreThink()
 {
+  makevectors( self.v_angle );
   client_setup_buttons_flags();
   client_weapon_frame();
+  //if( !self.deadflag )
+    {
+      alive_player_frame_setup();
+    }
+  //self.velocity = '100 100 100';
 }
 
 void PlayerPostThink()
